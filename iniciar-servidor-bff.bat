@@ -1,4 +1,4 @@
 @echo off
-cd /d "c:\Users\raphael.araujo\Desktop\Controle de Retirada do Estoque\bff-node"
+rem Execucao manual (diagnostico). Em producao o BFF roda como servico NSSM "TecalAlmoxarifadoBFF".
+cd /d "%~dp0bff-node"
 node dist\server.js
-
