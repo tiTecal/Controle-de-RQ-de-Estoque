@@ -8,7 +8,7 @@ param(
     [string]$LegacyServiceName = 'TecalAlmoxarifadoBFF',
     [string]$NssmPath = 'nssm',
     [string]$LogsDir = 'C:\projetos\00 - logs\Controle de RQ de Estoque',
-    [int]$Port = 8080,
+    [int]$Port = 7777,
     [switch]$AllowPendingDbPassword
 )
 $ErrorActionPreference = 'Stop'
@@ -91,7 +91,7 @@ if (Get-Service -Name $ServiceName -ErrorAction SilentlyContinue) {
 & $nssmExe set $ServiceName AppStdoutCreationDisposition 4 | Out-Null
 & $nssmExe set $ServiceName AppStderrCreationDisposition 4 | Out-Null
 
-# 7. Libera porta 8080 somente para a rede interna
+# 7. Libera porta 7777 somente para a rede interna
 Remove-NetFirewallRule -DisplayName 'Tecal Almoxarifado BFF' -ErrorAction SilentlyContinue
 New-NetFirewallRule -DisplayName 'Tecal Almoxarifado BFF' -Direction Inbound -Protocol TCP -LocalPort $Port -RemoteAddress LocalSubnet -Action Allow | Out-Null
 

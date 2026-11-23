@@ -3,7 +3,7 @@
 param(
     [string]$ServiceName = 'Projeto de TI - Controle de RQ de Estoque-api',
     [string]$NssmPath = 'nssm',
-    [int]$Port = 8080
+    [int]$Port = 7777
 )
 $ErrorActionPreference = 'Stop'
 

@@ -129,7 +129,7 @@ class SessionPreferences(context: Context) {
         private const val KEY_ADMIN_PIN_LEGACY = "admin_pin"
         private const val KEY_ADMIN_PIN_DIGEST = "admin_pin_digest"
 
-        const val DEFAULT_BFF_URL = "http://192.168.7.3:8080/"
+        const val DEFAULT_BFF_URL = "http://192.168.7.3:7777/"
     }
 }
 

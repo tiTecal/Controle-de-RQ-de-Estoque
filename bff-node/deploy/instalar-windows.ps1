@@ -1,6 +1,6 @@
 # Roda no servidor 192.168.7.3 (Windows, PowerShell como Administrador), dentro da pasta extraida do zip.
-# Requer Node.js 22+ instalado. Registra o BFF para iniciar com o Windows e abre a porta 8080 na rede interna.
-param([string]$InstallDir = 'C:\Tecal\almoxarifado-bff', [int]$Port = 8080)
+# Requer Node.js 22+ instalado. Registra o BFF para iniciar com o Windows e abre a porta 7777 na rede interna.
+param([string]$InstallDir = 'C:\Tecal\almoxarifado-bff', [int]$Port = 7777)
 $ErrorActionPreference = 'Stop'
 
 if (-not (Get-Command node -ErrorAction SilentlyContinue)) { throw 'Node.js 22+ nao encontrado no servidor.' }
