@@ -1,0 +1,41 @@
+# Segredos e ambientes (nunca commitar)
+.env
+.env.local
+.env.production
+*.env
+!.env.example
+!.env.production.template
+
+# Chaves e certificados
+key/
+*.jks
+*.keystore
+*.p12
+*.pem
+*.key
+
+# Node.js / BFF
+node_modules/
+bff-node/dist/
+bff-node/logs/
+bff-node/deploy/stage/
+bff-node/deploy/*.zip
+npm-debug.log*
+
+# Android / Gradle / Ktor
+.gradle/
+.kotlin/
+**/build/
+local.properties
+*.apk
+*.aab
+
+# IDEs e SO
+.idea/
+*.iml
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Midia pesada gerada
+video_apresentacao_tecal_1min.mp4

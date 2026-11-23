@@ -1,0 +1,30 @@
+/*
+ * Sentença SQL TOTVS RM (wsConsultaSQL)
+ * Código da Sentença: TECAL.ALM.1110_ITENS
+ * Sistema: T (Gestão de Estoque, Compras e Faturamento / Nucleus)
+ * Parâmetros: :CODCOLIGADA e :IDMOV
+ *
+ * Objetivo:
+ * Retornar 100% dos produtos/ativos vinculados ao movimento 1.1.10 selecionado
+ * pelo estoquista para conferência de retirada total (100%) na porta do almoxarifado.
+ */
+
+SELECT
+    I.CODCOLIGADA,
+    I.IDMOV,
+    I.NSEQITMMOV,
+    I.IDPRD,
+    ISNULL(P.CODIGOPRD, '') AS CODIGOPRD,
+    ISNULL(P.NOMEFANTASIA, ISNULL(P.DESCRICAO, '')) AS DESCRICAOPRODUTO,
+    ISNULL(I.CODUND, ISNULL(P.CODUNDCONTROLE, 'UN')) AS CODUND,
+    CAST(ISNULL(I.QUANTIDADETOTAL, ISNULL(I.QUANTIDADE, 0)) AS DECIMAL(18, 4)) AS QUANTIDADE,
+    ISNULL(P.CODIGOBARRA, '') AS CODIGOBARRA,
+    ISNULL(I.HISTORICOCURTO, '') AS OBSERVACAOITEM
+FROM TITMMOV I WITH (NOLOCK)
+INNER JOIN TPRD P WITH (NOLOCK)
+    ON P.CODCOLIGADA = I.CODCOLIGADA
+   AND P.IDPRD = I.IDPRD
+WHERE I.CODCOLIGADA = :CODCOLIGADA
+  AND I.IDMOV = :IDMOV
+ORDER BY I.NSEQITMMOV ASC;
+

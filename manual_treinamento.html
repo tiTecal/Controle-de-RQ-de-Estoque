@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Manual de Treinamento - Controle de Retirada do Estoque (Tecal Engenharia)</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+    @page {
+      size: A4;
+      margin: 18mm 16mm 18mm 16mm;
+      @bottom-right {
+        content: counter(page);
+      }
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      color: #1E293B;
+      background-color: #FFFFFF;
+      line-height: 1.55;
+      font-size: 10.5pt;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    /* Utilitários de Quebra de Página */
+    .page-break {
+      page-break-before: always;
+      break-before: page;
+    }
+    .avoid-break {
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+
+    /* Capa Executiva */
+    .cover-page {
+      height: 100vh;
+      min-height: 250mm;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 20mm 10mm 15mm 10mm;
+      page-break-after: always;
+      break-after: page;
+    }
+
+    .cover-top {
+      border-left: 6px solid #1E40AF;
+      padding-left: 18px;
+    }
+
+    .cover-badge {
+      display: inline-block;
+      background: #EFF6FF;
+      color: #1D4ED8;
+      font-weight: 700;
+      font-size: 8.5pt;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      padding: 5px 12px;
+      border-radius: 6px;
+      margin-bottom: 16px;
+      border: 1px solid #BFDBFE;
+    }
+
+    .cover-title {
+      font-size: 26pt;
+      font-weight: 800;
+      color: #0F172A;
+      line-height: 1.2;
+      margin-bottom: 12px;
+    }
+
+    .cover-subtitle {
+      font-size: 13pt;
+      font-weight: 500;
+      color: #475569;
+      line-height: 1.4;
+    }
+
+    .cover-features {
+      margin: 40px 0;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .feature-card {
+      background: #F8FAFC;
+      border: 1px solid #E2E8F0;
+      border-radius: 10px;
+      padding: 16px;
+    }
+
+    .feature-card h4 {
+      font-size: 11pt;
+      color: #1E3A8A;
+      font-weight: 700;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .feature-card p {
+      font-size: 9pt;
+      color: #64748B;
+      line-height: 1.4;
+    }
+
+    .cover-footer {
+      border-top: 1px solid #CBD5E1;
+      padding-top: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      font-size: 9pt;
+      color: #64748B;
+    }
+
+    .cover-footer strong {
+      color: #0F172A;
+    }
+
+    /* Cabeçalhos e Seções */
+    h2.section-title {
+      font-size: 16pt;
+      font-weight: 800;
+      color: #0F172A;
+      border-bottom: 2px solid #E2E8F0;
+      padding-bottom: 6px;
+      margin-top: 26px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    h3.subsection-title {
+      font-size: 12pt;
+      font-weight: 700;
+      color: #1E3A8A;
+      margin-top: 16px;
+      margin-bottom: 8px;
+    }
+
+    p {
+      margin-bottom: 10px;
+      color: #334155;
+    }
+
+    /* Caixas de Alerta e Destaque */
+    .callout {
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin: 14px 0;
+      border-left: 4px solid;
+    }
+
+    .callout-info {
+      background: #EFF6FF;
+      border-color: #2563EB;
+      color: #1E40AF;
+    }
+
+    .callout-success {
+      background: #ECFDF5;
+      border-color: #059669;
+      color: #065F46;
+    }
+
+    .callout-warning {
+      background: #FFFBEB;
+      border-color: #D97706;
+      color: #92400E;
+    }
+
+    .callout h4 {
+      font-weight: 700;
+      margin-bottom: 4px;
+      font-size: 10pt;
+    }
+
+    .callout p {
+      font-size: 9.5pt;
+      margin: 0;
+      color: inherit;
+    }
+
+    /* Diagrama Visual (SVG Flow) */
+    .diagram-container {
+      background: #F8FAFC;
+      border: 1px solid #E2E8F0;
+      border-radius: 10px;
+      padding: 16px;
+      margin: 16px 0;
+      text-align: center;
+    }
+
+    /* Passos do Processo */
+    .step-box {
+      background: #FFFFFF;
+      border: 1px solid #E2E8F0;
+      border-radius: 10px;
+      padding: 14px 18px;
+      margin-bottom: 14px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+    }
+
+    .step-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    .step-badge {
+      background: #1E40AF;
+      color: #FFFFFF;
+      font-weight: 800;
+      font-size: 8.5pt;
+      padding: 4px 10px;
+      border-radius: 20px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .step-title {
+      font-size: 11.5pt;
+      font-weight: 700;
+      color: #0F172A;
+    }
+
+    .step-content ul {
+      margin-left: 20px;
+      margin-top: 6px;
+      font-size: 9.5pt;
+      color: #475569;
+    }
+
+    .step-content li {
+      margin-bottom: 4px;
+    }
+
+    /* Tabelas */
+    table.custom-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 14px 0;
+      font-size: 9pt;
+    }
+
+    table.custom-table th {
+      background: #0F172A;
+      color: #FFFFFF;
+      font-weight: 600;
+      text-align: left;
+      padding: 9px 12px;
+      border: 1px solid #0F172A;
+    }
+
+    table.custom-table td {
+      padding: 8px 12px;
+      border: 1px solid #E2E8F0;
+      color: #334155;
+      vertical-align: top;
+    }
+
+    table.custom-table tr:nth-child(even) {
+      background-color: #F8FAFC;
+    }
+
+    /* Roteiro de Slides */
+    .slide-card {
+      background: #F8FAFC;
+      border: 1px solid #CBD5E1;
+      border-left: 5px solid #2563EB;
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin-bottom: 14px;
+    }
+
+    .slide-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+
+    .slide-number {
+      font-weight: 800;
+      color: #2563EB;
+      font-size: 9.5pt;
+      text-transform: uppercase;
+    }
+
+    .slide-title {
+      font-weight: 700;
+      font-size: 11pt;
+      color: #0F172A;
+    }
+
+    .slide-speech {
+      background: #EFF6FF;
+      border-radius: 6px;
+      padding: 8px 12px;
+      margin-top: 8px;
+      font-size: 9pt;
+      font-style: italic;
+      color: #1E40AF;
+      border-left: 3px solid #3B82F6;
+    }
+
+    .slide-speech strong {
+      font-style: normal;
+      color: #1D4ED8;
+    }
+
+    /* FAQ */
+    .faq-item {
+      margin-bottom: 12px;
+      padding-bottom: 10px;
+      border-bottom: 1px dashed #E2E8F0;
+    }
+
+    .faq-q {
+      font-weight: 700;
+      color: #0F172A;
+      font-size: 10pt;
+      margin-bottom: 4px;
+    }
+
+    .faq-a {
+      font-size: 9.5pt;
+      color: #475569;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- CAPA EXECUTIVA -->
+  <div class="cover-page">
+    <div class="cover-top">
+      <div class="cover-badge">Manual Operacional de Treinamento & Governança</div>
+      <h1 class="cover-title">Controle Digital de Retirada do Almoxarifado</h1>
+      <div class="cover-subtitle">Guia Prático de Operação, Segurança LGPD e Roteiro de Apresentação Executiva Integrado ao TOTVS RM (Coligada 2)</div>
+    </div>
+
+    <div class="cover-features">
+      <div class="feature-card">
+        <h4>⚡ 100% Sem Papel</h4>
+        <p>Eliminação definitiva de requisições impressas, pranchetas e assinaturas manuais ilegíveis no balcão.</p>
+      </div>
+      <div class="feature-card">
+        <h4>🔒 Senha Pessoal do RM</h4>
+        <p>Validação criptográfica com a senha nativa do TOTVS RM, garantindo autoria e validade jurídica da retirada.</p>
+      </div>
+      <div class="feature-card">
+        <h4>🛡️ LGPD por Padrão</h4>
+        <p>Mascaramento automático de CPF (apenas 3 dígitos visíveis) e proteção ativa contra observadores na fila.</p>
+      </div>
+      <div class="feature-card">
+        <h4>📊 Auditoria em Tempo Real</h4>
+        <p>Gravação instantânea de quem retirou, data e horário oficial diretamente na tabela complementar TMOVCOMPL.</p>
+      </div>
+    </div>
+
+    <div class="cover-footer">
+      <div>
+        <strong>Tecal Engenharia Ltda.</strong><br>
+        Departamento de Tecnologia & Operações de Estoque
+      </div>
+      <div style="text-align: right;">
+        <strong>Versão do Sistema:</strong> 2.0 (Nativa Android + BFF Node.js)<br>
+        <strong>Ambiente:</strong> TOTVS RM Corpore / Almoxarifado (Coligada 2)
+      </div>
+    </div>
+  </div>
+
+  <!-- SEÇÃO 1: VISÃO GERAL E ARQUITETURA -->
+  <div class="avoid-break">
+    <h2 class="section-title">1. Visão Geral: Por que o Sistema foi Criado?</h2>
+    <p>
+      O controle de materiais no almoxarifado é vital para o orçamento de obras e controle de inventário. O processo tradicional baseado em fichas de papel causava três gargalos críticos:
+    </p>
+    <ul>
+      <li><strong>Extravio de Comprovantes:</strong> Papéis perdidos ou molhados inviabilizavam saber quem retirou ferramentas e insumos caros.</li>
+      <li><strong>Assinaturas Indecifráveis:</strong> Rubricas manuais impossibilitavam identificar o colaborador responsável na hora do fechamento.</li>
+      <li><strong>Falta de Baixa Imediata:</strong> O estoquista passava horas no fim do dia redigitando baixas no TOTVS RM.</li>
+    </ul>
+
+    <div class="callout callout-success" style="margin-top: 14px;">
+      <h4>✨ A Nova Realidade Digital</h4>
+      <p>Com o terminal instalado no balcão, o colaborador que veio retirar os materiais se identifica digitando apenas os primeiros dígitos do seu CPF e confirma a retirada com sua <strong>própria senha do RM</strong>. O sistema valida e dá baixa imediatamente no ERP.</p>
+    </div>
+  </div>
+
+  <!-- DIAGRAMA VISUAL -->
+  <div class="avoid-break" style="margin-top: 16px;">
+    <h3 class="subsection-title">Arquitetura de Comunicação em Tempo Real</h3>
+    <div class="diagram-container">
+      <svg width="100%" height="95" viewBox="0 0 680 95" xmlns="http://www.w3.org/2000/svg">
+        <!-- Tablet Box -->
+        <rect x="10" y="15" width="170" height="65" rx="8" fill="#1E293B" stroke="#0F172A" stroke-width="1.5"/>
+        <text x="95" y="42" fill="#FFFFFF" font-family="Inter, sans-serif" font-size="11" font-weight="700" text-anchor="middle">📱 Tablet / Celular</text>
+        <text x="95" y="60" fill="#94A3B8" font-family="Inter, sans-serif" font-size="9" text-anchor="middle">Balcão do Estoque</text>
+
+        <!-- Seta 1 -->
+        <line x1="180" y1="48" x2="240" y2="48" stroke="#2563EB" stroke-width="2.5" stroke-dasharray="4"/>
+        <polygon points="240,44 248,48 240,52" fill="#2563EB"/>
+
+        <!-- BFF Box -->
+        <rect x="250" y="15" width="180" height="65" rx="8" fill="#EFF6FF" stroke="#3B82F6" stroke-width="1.5"/>
+        <text x="340" y="42" fill="#1E3A8A" font-family="Inter, sans-serif" font-size="11" font-weight="700" text-anchor="middle">⚡ Servidor Local (BFF)</text>
+        <text x="340" y="60" fill="#3B82F6" font-family="Inter, sans-serif" font-size="9" text-anchor="middle">Cache Inteligente & Criptografia</text>
+
+        <!-- Seta 2 -->
+        <line x1="430" y1="48" x2="490" y2="48" stroke="#2563EB" stroke-width="2.5" stroke-dasharray="4"/>
+        <polygon points="490,44 498,48 490,52" fill="#2563EB"/>
+
+        <!-- TOTVS RM Box -->
+        <rect x="500" y="15" width="170" height="65" rx="8" fill="#0F172A" stroke="#000000" stroke-width="1.5"/>
+        <text x="585" y="42" fill="#38BDF8" font-family="Inter, sans-serif" font-size="11" font-weight="700" text-anchor="middle">🗄️ TOTVS RM (Corpore)</text>
+        <text x="585" y="60" fill="#E2E8F0" font-family="Inter, sans-serif" font-size="9" text-anchor="middle">Coligada 2 (1.1.10 / TMOVCOMPL)</text>
+      </svg>
+    </div>
+  </div>
+
+  <div class="page-break"></div>
+
+  <!-- SEÇÃO 2: FLUXO OPERACIONAL PASSO A PASSO -->
+  <h2 class="section-title">2. Manual Prático de Uso (Passo a Passo)</h2>
+  <p>O fluxo de atendimento no balcão dura em média <strong>25 segundos</strong>. Veja as etapas:</p>
+
+  <!-- PASSO 1 -->
+  <div class="step-box avoid-break">
+    <div class="step-header">
+      <span class="step-badge">Passo 1</span>
+      <span class="step-title">Localizar a Requisição no Painel Principal</span>
+    </div>
+    <div class="step-content">
+      <p>Ao abrir o sistema, a tela lista automaticamente todos os movimentos do tipo <strong>1.1.10</strong> (Transferência/Retirada) pendentes da <strong>Coligada 2</strong>.</p>
+      <ul>
+        <li>O almoxarife visualiza o <strong>Número do Movimento</strong>, <strong>Data/Hora da Solicitação</strong>, <strong>Centro de Custo/Obra</strong> e <strong>Solicitante</strong>.</li>
+        <li>É possível usar a barra de pesquisa superior para digitar o número da requisição ou o nome da obra e filtrar instantaneamente.</li>
+        <li>Ao encontrar a solicitação correspondente, toque sobre o card para abrir os itens.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- PASSO 2 -->
+  <div class="step-box avoid-break">
+    <div class="step-header">
+      <span class="step-badge">Passo 2</span>
+      <span class="step-title">Conferência dos Materiais na Bancada</span>
+    </div>
+    <div class="step-content">
+      <p>A tela de detalhes exibe com clareza cada produto requisitado:</p>
+      <ul>
+        <li><strong>Código do Produto no RM</strong>, descrição completa (ex: <em>Parafuso Sextavado Aço 1/2"</em>), quantidade e unidade (UN, KG, M).</li>
+        <li>O almoxarife confere os itens físicos separados na bancada.</li>
+        <li>Com todos os materiais conferidos, o almoxarife toca no botão azul <strong>"Prosseguir para Baixa"</strong> e vira a tela para o colaborador.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- PASSO 3 -->
+  <div class="step-box avoid-break">
+    <div class="step-header">
+      <span class="step-badge">Passo 3</span>
+      <span class="step-title">Identificação do Retirante (Protegido por LGPD)</span>
+    </div>
+    <div class="step-content">
+      <p>Abre-se a janela modal de identificação. <strong>O colaborador que veio buscar os itens é quem interage:</strong></p>
+      <ul>
+        <li>O colaborador clica no campo de pesquisa e <strong>digita apenas os 3 primeiros dígitos do seu CPF</strong> (ex: <code>158</code>).</li>
+        <li>O sistema lista instantaneamente os colaboradores ativos do RM correspondentes.</li>
+        <li><strong>Privacidade Garantida (LGPD):</strong> O CPF nunca é exibido por inteiro. O card mostra apenas <code>158.***.***-**</code>, a Matrícula (Chapa) e o Setor.</li>
+        <li>Ao clicar no seu nome, o campo de busca encolhe automaticamente para evitar que pessoas atrás na fila vejam o que foi digitado (<em>proteção contra shoulder surfing</em>).</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- PASSO 4 -->
+  <div class="step-box avoid-break">
+    <div class="step-header">
+      <span class="step-badge">Passo 4</span>
+      <span class="step-title">Autenticação com a Senha Pessoal do TOTVS RM</span>
+    </div>
+    <div class="step-content">
+      <p>Com o nome selecionado, o campo de senha é liberado:</p>
+      <ul>
+        <li>O colaborador digita a <strong>sua mesma senha de acesso ao TOTVS RM</strong> (a senha que ele usa no Portal do Colaborador / MeuRH).</li>
+        <li>A senha fica oculta em formato de bolinhas (com ícone de olho para conferência se desejar).</li>
+        <li>O colaborador toca no botão verde <strong>"Confirmar Retirada e Baixar"</strong>.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- PASSO 5 -->
+  <div class="step-box avoid-break">
+    <div class="step-header">
+      <span class="step-badge">Passo 5</span>
+      <span class="step-title">Baixa Instantânea no RM e Liberação do Material</span>
+    </div>
+    <div class="step-content">
+      <p>Em milissegundos, o sistema valida o hash criptográfico e grava no banco de dados oficial do RM:</p>
+      <ul>
+        <li><strong><code>TMOVCOMPL.RETIRADO_POR</code></strong>: Gravado com o nome do colaborador retirante.</li>
+        <li><strong><code>TMOVCOMPL.DATA_RETIRADA</code></strong> e <strong><code>HORA_RETIRADA</code></strong>: Gravados com a data e o horário oficial do servidor.</li>
+        <li>O banner de sucesso verde confirma a operação e a requisição <strong>some automaticamente da fila</strong>, evitando baixas duplicadas. O material é entregue ao colaborador.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="page-break"></div>
+
+  <!-- SEÇÃO 3: GOVERNANÇA, TI E LGPD -->
+  <h2 class="section-title">3. Pilares de Segurança, Governança e TI</h2>
+  <p>Argumentos técnicos essenciais para apresentações a gestores, diretores e auditoria:</p>
+
+  <table class="custom-table avoid-break">
+    <thead>
+      <tr>
+        <th style="width: 25%;">Pilar</th>
+        <th style="width: 40%;">Como o Sistema Atende</th>
+        <th style="width: 35%;">Benefício Corporativo</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Privacidade & LGPD</strong></td>
+        <td>Princípio da Minimização: CPF mascarado (<code>158.***.***-**</code>) e higienização automática do campo de busca.</td>
+        <td>Conformidade total com a Lei 13.709/2018. Risco zero de vazamento de dados em tela pública.</td>
+      </tr>
+      <tr>
+        <td><strong>Segurança de Senhas</strong></td>
+        <td>Autenticação contra o hash oficial do TOTVS RM (<em>Bcrypt + SHA256</em>). Nenhuma senha é salva no aplicativo.</td>
+        <td>Não exige senhas paralelas; aproveita a política corporativa de senhas já adotada na empresa.</td>
+      </tr>
+      <tr>
+        <td><strong>Auditoria Total</strong></td>
+        <td>Assinatura digital imutável gravada diretamente nos campos oficiais da tabela <code>TMOVCOMPL</code>.</td>
+        <td>Rastreabilidade para inventários, auditorias externas e prestação de contas com clientes e obras.</td>
+      </tr>
+      <tr>
+        <td><strong>Desempenho de Rede</strong></td>
+        <td>Cache em RAM de 30 min para funcionários e 20 s para pendências. Pool SQL reduzido e fechamento em 15s.</td>
+        <td>Zero impacto ou lentidão no servidor de banco de dados do RM (192.168.7.7).</td>
+      </tr>
+      <tr>
+        <td><strong>Design Responsivo</strong></td>
+        <td>Interface nativa adaptada para tablets de balcão e smartphones Android em modo vertical e horizontal.</td>
+        <td>Flexibilidade de hardware sem distorção visual ou botões escondidos pela barra do sistema.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- SEÇÃO 4: ROTEIRO DE SLIDES PRONTO -->
+  <h2 class="section-title" style="margin-top: 26px;">4. Roteiro Sugerido para Apresentação em Slides</h2>
+  <p>Estrutura pronta para copiar e colar no PowerPoint ou Canva com o texto sugerido para a fala do orador:</p>
+
+  <!-- Slide 1 -->
+  <div class="slide-card avoid-break">
+    <div class="slide-header">
+      <span class="slide-number">Slide 1 • Abertura</span>
+      <span class="slide-title">Controle Digital de Retirada do Almoxarifado</span>
+    </div>
+    <p><strong>Conteúdo Visual:</strong> Logo da Tecal Engenharia, foto de um tablet no almoxarifado e o subtítulo: <em>"Eficiência, Governança e Rastreabilidade Integrada ao TOTVS RM"</em>.</p>
+    <div class="slide-speech">
+      <strong>Fala Sugerida:</strong> "Boa tarde a todos. Hoje apresentamos a nova solução de controle de estoque do nosso almoxarifado. Trata-se de um sistema moderno que elimina totalmente o papel, traz conformidade com a LGPD e conecta o balcão diretamente ao nosso ERP TOTVS RM."
+    </div>
+  </div>
+
+  <!-- Slide 2 -->
+  <div class="slide-card avoid-break">
+    <div class="slide-header">
+      <span class="slide-number">Slide 2 • Diagnóstico</span>
+      <span class="slide-title">O Fim das Pranchetas e Fichas de Papel</span>
+    </div>
+    <p><strong>Conteúdo Visual:</strong> Tabela comparativa destacando os problemas do método manual (fichas perdidas, assinaturas ilegíveis, retrabalho) contra a solução digital.</p>
+    <div class="slide-speech">
+      <strong>Fala Sugerida:</strong> "No método anterior, dependíamos de fichas que se perdiam e assinaturas que ninguém conseguia ler. Agora, toda retirada é auditada digitalmente e baixada no ERP em menos de 30 segundos."
+    </div>
+  </div>
+
+  <!-- Slide 3 -->
+  <div class="slide-card avoid-break">
+    <div class="slide-header">
+      <span class="slide-number">Slide 3 • Operação</span>
+      <span class="slide-title">Fluxo Operacional em 4 Passos</span>
+    </div>
+    <p><strong>Conteúdo Visual:</strong> Linha do tempo com ícones: 1. Seleção da Pendência (1.1.10) &rarr; 2. Conferência dos Itens &rarr; 3. Busca por 3 dígitos do CPF &rarr; 4. Senha do RM.</p>
+    <div class="slide-speech">
+      <strong>Fala Sugerida:</strong> "O fluxo é extremamente rápido. O almoxarife confere os itens e o próprio colaborador que foi buscar os materiais digita 3 dígitos do seu CPF, seleciona seu nome e digita sua senha do RM."
+    </div>
+  </div>
+
+  <!-- Slide 4 -->
+  <div class="slide-card avoid-break">
+    <div class="slide-header">
+      <span class="slide-number">Slide 4 • Segurança</span>
+      <span class="slide-title">Segurança, LGPD e Validade de Auditoria</span>
+    </div>
+    <p><strong>Conteúdo Visual:</strong> Print do modal mostrando o CPF protegido (<code>158.***.***-**</code>) e a gravação oficial nos campos da tabela complementar <code>TMOVCOMPL</code>.</p>
+    <div class="slide-speech">
+      <strong>Fala Sugerida:</strong> "Desenvolvemos o sistema sob o princípio de Privacidade por Design. Nenhum dado pessoal sensível é exposto no tablet e a assinatura por senha do RM garante autoria incontestável."
+    </div>
+  </div>
+
+  <div class="page-break"></div>
+
+  <!-- Slide 5 -->
+  <div class="slide-card avoid-break">
+    <div class="slide-header">
+      <span class="slide-number">Slide 5 • Resultados</span>
+      <span class="slide-title">Resultados e Ganhos Imediatos para a Empresa</span>
+    </div>
+    <p><strong>Conteúdo Visual:</strong> 3 cartões de destaque: Agilidade no Atendimento (25 seg) • Auditoria 100% Rastreável • Zero Custos com Papel.</p>
+    <div class="slide-speech">
+      <strong>Fala Sugerida:</strong> "Com essa implantação, reduzimos o tempo de atendimento pela metade, zeramos as inconsistências de inventário e elevamos o padrão de tecnologia e controle da Tecal Engenharia. Estamos à disposição para dúvidas."
+    </div>
+  </div>
+
+  <!-- SEÇÃO 5: PERGUNTAS FREQUENTES (FAQ) -->
+  <div class="avoid-break" style="margin-top: 24px;">
+    <h2 class="section-title">5. Perguntas Frequentes (FAQ de Treinamento)</h2>
+    
+    <div class="faq-item">
+      <div class="faq-q">1. Qual senha o colaborador que está retirando deve digitar?</div>
+      <div class="faq-a">A mesma senha que ele utiliza para acessar o <strong>TOTVS RM</strong> (Portal do Colaborador / MeuRH). O sistema não exige criação de nova senha.</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q">2. O que fazer se o colaborador não souber ou tiver esquecido sua senha do RM?</div>
+      <div class="faq-a">O colaborador deve recuperar a senha no portal institucional ou solicitar suporte ao DP/TI. Por política de conformidade e auditoria, o estoquista não pode burlar a exigência da senha.</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q">3. O que acontece se a rede cair temporariamente?</div>
+      <div class="faq-a">O tablet conta com indicador inteligente de status. Se a rede oscilar, o sistema sinaliza o modo offline e disponibiliza o botão "Reconectar" assim que a conexão retornar, mantendo a integridade do banco de dados.</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q">4. O sistema altera quantidades de estoque sem aprovação prévia?</div>
+      <div class="faq-a">Não. O sistema apenas dá baixa nas requisições do tipo <strong>1.1.10</strong> previamente autorizadas e lançadas no RM. Ele não cria movimentações avulsas nem altera quantidades fora do processo formal.</div>
+    </div>
+  </div>
+
+</body>
+</html>
+

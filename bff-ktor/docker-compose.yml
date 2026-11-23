@@ -1,0 +1,12 @@
+services:
+  tecal-almoxarifado-bff:
+    build: .
+    container_name: tecal-almoxarifado-bff
+    restart: unless-stopped
+    ports:
+      - "${BFF_PORT:-8080}:8080"
+    env_file:
+      - .env
+    environment:
+      - TZ=America/Sao_Paulo
+
