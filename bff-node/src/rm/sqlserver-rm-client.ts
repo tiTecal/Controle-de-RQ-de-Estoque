@@ -93,9 +93,9 @@ export class SqlServerRmClient implements TotvsRmGateway {
         connectionTimeout: 15_000,
         requestTimeout: 20_000,
         pool: {
-          max: 3,
-          min: 0,
-          idleTimeoutMillis: 15_000
+          max: 5,
+          min: 1,
+          idleTimeoutMillis: 300_000
         },
         options: {
           encrypt: this.config.dbEncrypt,
@@ -263,6 +263,21 @@ export class SqlServerRmClient implements TotvsRmGateway {
         }
       }
 
+      // Antes de autenticar na GUSUARIO/RM Host, valida se o contexto exige perfil ESTOQUE
+      if (requiredContext === 'ESTOQUE') {
+        await this.ensureUsersLoaded();
+        const rmEntry =
+          internalEntry ||
+          (cleanCpfDigits.length === 11 ? this.internalUsersByCpf.get(cleanCpfDigits) : undefined);
+        if (
+          rmEntry &&
+          rmEntry.publicDto.perfil !== 'ESTOQUE' &&
+          rmEntry.publicDto.perfil !== 'AMBOS'
+        ) {
+          return false;
+        }
+      }
+
       // 2. Validação direta na Corpore.dbo.GUSUARIO por todos os logins aliases do colaborador
       const candidateSet = new Set<string>();
       const pushCandidate = (val: string | undefined): void => {
@@ -379,7 +394,7 @@ export class SqlServerRmClient implements TotvsRmGateway {
     }
 
     // Fixado estritamente na Coligada 2 (Tecal Engenharia)
-    const targetColigada = 2;
+    const targetColigada = _codColigada > 0 ? _codColigada : (this.config.rmCodColigada || 2);
     const minDataEmissao = this.config.rmMinDataEmissao.trim() || null;
 
     const query = `
@@ -503,7 +518,7 @@ export class SqlServerRmClient implements TotvsRmGateway {
     }
 
     // Fixado estritamente na Coligada 2 (Tecal Engenharia)
-    const targetColigada = 2;
+    const targetColigada = _codColigada > 0 ? _codColigada : (this.config.rmCodColigada || 2);
     try {
       const pool = await this.getPool();
 
@@ -595,7 +610,7 @@ export class SqlServerRmClient implements TotvsRmGateway {
     horaRetirada: string
   ): Promise<string> {
     // Fixado estritamente na Coligada 2 (Tecal Engenharia)
-    const targetColigada = 2;
+    const targetColigada = _codColigada > 0 ? _codColigada : (this.config.rmCodColigada || 2);
     const pool = await this.getPool();
     const transaction = new sql.Transaction(pool);
 
@@ -669,10 +684,8 @@ export class SqlServerRmClient implements TotvsRmGateway {
 
       if (complRow) {
         const existingUser = String(complRow.RETIRADO_POR || '').trim();
-        const existingDate = String(complRow.DATA_RETIRADA || '').trim();
-        const existingTime = String(complRow.HORA_RETIRADA || '').trim();
 
-        if (existingUser && existingDate && existingTime) {
+        if (existingUser) {
           await transaction.rollback();
           throw new MovementAlreadyWithdrawnError(idMov, existingUser);
         }
@@ -686,7 +699,7 @@ export class SqlServerRmClient implements TotvsRmGateway {
           .query(`
             UPDATE [${this.corporeDb}].[dbo].[TMOVCOMPL]
                SET [${this.colRetiradoPor}]  = @retiradoPor,
-                   [${this.colDataRetirada}] = @dataRetirada,
+                   [${this.colDataRetirada}] = TRY_CONVERT(DATETIME, @dataRetirada, 120),
                    [${this.colHoraRetirada}] = @horaRetirada
              WHERE CODCOLIGADA = @codColigada
                AND IDMOV = @idMov;
@@ -702,7 +715,7 @@ export class SqlServerRmClient implements TotvsRmGateway {
             INSERT INTO [${this.corporeDb}].[dbo].[TMOVCOMPL]
               (CODCOLIGADA, IDMOV, [${this.colRetiradoPor}], [${this.colDataRetirada}], [${this.colHoraRetirada}])
             VALUES
-              (@codColigada, @idMov, @retiradoPor, @dataRetirada, @horaRetirada);
+              (@codColigada, @idMov, @retiradoPor, TRY_CONVERT(DATETIME, @dataRetirada, 120), @horaRetirada);
           `);
       }
 

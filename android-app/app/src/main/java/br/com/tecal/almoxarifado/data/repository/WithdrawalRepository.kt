@@ -18,6 +18,8 @@ import br.com.tecal.almoxarifado.data.model.UpsertUserRequest
 import br.com.tecal.almoxarifado.data.model.VerifyAdminPinRequest
 import br.com.tecal.almoxarifado.data.model.VerifyAdminPinResponse
 import br.com.tecal.almoxarifado.data.remote.DynamicRetrofitClient
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 sealed class ApiOutcome<out T> {
     data class Success<T>(val data: T, val fromOfflineCache: Boolean = false) : ApiOutcome<T>()
@@ -88,86 +90,88 @@ class WithdrawalRepository(
         }
     }
 
-    suspend fun fetchPending1110Movements(): ApiOutcome<List<PendingMovementDto>> {
-        return try {
-            val response = retrofitClient.api().listarMovimentos1110Pendentes()
-            when {
-                response.isSuccessful && response.body() != null -> {
-                    val list = response.body()!!.filter { it.codColigada == 2 && it.codTmv.trim() == "1.1.10" }
-                    runCatching {
-                        dao.replaceAllPendingMovements(list.map(CachedPendingMovementEntity::fromDto))
+    suspend fun fetchPending1110Movements(): ApiOutcome<List<PendingMovementDto>> =
+        withContext(Dispatchers.IO) {
+            try {
+                val response = retrofitClient.api().listarMovimentos1110Pendentes()
+                when {
+                    response.isSuccessful && response.body() != null -> {
+                        val list = response.body()!!.filter { it.codColigada == 2 && it.codTmv.trim() == "1.1.10" }
+                        runCatching {
+                            dao.replaceAllPendingMovements(list.map(CachedPendingMovementEntity::fromDto))
+                        }
+                        ApiOutcome.Success(list, fromOfflineCache = false)
                     }
-                    ApiOutcome.Success(list, fromOfflineCache = false)
+                    response.code() == 401 -> {
+                        sessionPreferences.clearEstoqueSession()
+                        clearLocalSecurityCache()
+                        ApiOutcome.Error(
+                            message = "Sessão do estoque expirada. Faça login novamente.",
+                            isSessionExpired = true
+                        )
+                    }
+                    else -> {
+                        val apiError = parseError(response.errorBody()?.string())
+                        ApiOutcome.Error(
+                            message = apiError?.mensagem ?: "Erro ao buscar movimentos 1.1.10 (${response.code()})."
+                        )
+                    }
                 }
-                response.code() == 401 -> {
-                    sessionPreferences.clearEstoqueSession()
-                    clearLocalSecurityCache()
+            } catch (_: Exception) {
+                val legacyMockIds = setOf(45812, 45815, 45819)
+                val cached = dao.getAllPendingMovements()
+                    .mapNotNull { it.toDtoOrNull() }
+                    .filter { it.codColigada == 2 && it.idMov !in legacyMockIds }
+                if (cached.isNotEmpty()) {
+                    ApiOutcome.Success(cached, fromOfflineCache = true)
+                } else {
                     ApiOutcome.Error(
-                        message = "Sessão do estoque expirada. Faça login novamente.",
-                        isSessionExpired = true
+                        message = "Servidor indisponível no momento (${sessionPreferences.bffBaseUrl}). Tentando reconectar...",
+                        isNetworkFailure = true
                     )
                 }
-                else -> {
-                    val apiError = parseError(response.errorBody()?.string())
-                    ApiOutcome.Error(
-                        message = apiError?.mensagem ?: "Erro ao buscar movimentos 1.1.10 (${response.code()})."
-                    )
-                }
-            }
-        } catch (_: Exception) {
-            val legacyMockIds = setOf(45812, 45815, 45819)
-            val cached = dao.getAllPendingMovements()
-                .mapNotNull { it.toDtoOrNull() }
-                .filter { it.codColigada == 2 && it.idMov !in legacyMockIds }
-            if (cached.isNotEmpty()) {
-                ApiOutcome.Success(cached, fromOfflineCache = true)
-            } else {
-                ApiOutcome.Error(
-                    message = "Servidor indisponível no momento (${sessionPreferences.bffBaseUrl}). Tentando reconectar...",
-                    isNetworkFailure = true
-                )
             }
         }
-    }
 
-    suspend fun fetchMovementItems(idMov: Int): ApiOutcome<List<MovementItemDto>> {
-        return try {
-            val response = retrofitClient.api().listarItensMovimento1110(idMov)
-            when {
-                response.isSuccessful && response.body() != null -> {
-                    val items = response.body()!!
-                    runCatching {
-                        dao.replaceMovementItems(idMov, items.map(CachedMovementItemEntity::fromDto))
+    suspend fun fetchMovementItems(idMov: Int): ApiOutcome<List<MovementItemDto>> =
+        withContext(Dispatchers.IO) {
+            try {
+                val response = retrofitClient.api().listarItensMovimento1110(idMov)
+                when {
+                    response.isSuccessful && response.body() != null -> {
+                        val items = response.body()!!
+                        runCatching {
+                            dao.replaceMovementItems(idMov, items.map(CachedMovementItemEntity::fromDto))
+                        }
+                        ApiOutcome.Success(items, fromOfflineCache = false)
                     }
-                    ApiOutcome.Success(items, fromOfflineCache = false)
+                    response.code() == 401 -> {
+                        sessionPreferences.clearEstoqueSession()
+                        clearLocalSecurityCache()
+                        ApiOutcome.Error(
+                            message = "Sessão do estoque expirada. Faça login novamente.",
+                            isSessionExpired = true
+                        )
+                    }
+                    else -> {
+                        val apiError = parseError(response.errorBody()?.string())
+                        ApiOutcome.Error(
+                            message = apiError?.mensagem ?: "Erro ao carregar itens do movimento ($idMov)."
+                        )
+                    }
                 }
-                response.code() == 401 -> {
-                    sessionPreferences.clearEstoqueSession()
-                    clearLocalSecurityCache()
+            } catch (_: Exception) {
+                val cached = dao.getItemsForMovement(idMov).mapNotNull { it.toDtoOrNull() }
+                if (cached.isNotEmpty()) {
+                    ApiOutcome.Success(cached, fromOfflineCache = true)
+                } else {
                     ApiOutcome.Error(
-                        message = "Sessão do estoque expirada. Faça login novamente.",
-                        isSessionExpired = true
+                        message = "Não foi possível carregar os itens do movimento (falha de rede).",
+                        isNetworkFailure = true
                     )
                 }
-                else -> {
-                    val apiError = parseError(response.errorBody()?.string())
-                    ApiOutcome.Error(
-                        message = apiError?.mensagem ?: "Erro ao carregar itens do movimento ($idMov)."
-                    )
-                }
-            }
-        } catch (_: Exception) {
-            val cached = dao.getItemsForMovement(idMov).mapNotNull { it.toDtoOrNull() }
-            if (cached.isNotEmpty()) {
-                ApiOutcome.Success(cached, fromOfflineCache = true)
-            } else {
-                ApiOutcome.Error(
-                    message = "Não foi possível carregar os itens do movimento (falha de rede).",
-                    isNetworkFailure = true
-                )
             }
         }
-    }
 
     suspend fun confirmarBaixa100PorCento(
         idMov: Int,

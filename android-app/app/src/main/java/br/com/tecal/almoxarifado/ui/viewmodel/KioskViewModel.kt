@@ -85,10 +85,15 @@ data class KioskUiState(
         get() = allPendingMovements.sumOf { it.qtdItens }
 
     val is100PercentChecked: Boolean
-        get() = selectedMovement != null && !selectedMovement.jaRetirado
+        get() = selectedMovement != null &&
+            !selectedMovement.jaRetirado &&
+            selectedItems.isNotEmpty() &&
+            itemsError == null &&
+            checkedItemSeqs.size == selectedItems.size
 
     val checkProgressFraction: Float
-        get() = 1f
+        get() = if (selectedItems.isEmpty()) 0f
+        else (checkedItemSeqs.size.toFloat() / selectedItems.size.toFloat()).coerceIn(0f, 1f)
 }
 
 class KioskViewModel(
@@ -107,6 +112,7 @@ class KioskViewModel(
     val uiState: StateFlow<KioskUiState> = _uiState.asStateFlow()
 
     private var autoRefreshJob: Job? = null
+    private var fetchMovementsJob: Job? = null
     private var bannerDismissJob: Job? = null
     private var cpfLookupJob: Job? = null
     private var activeAdminToken: String? = null
@@ -150,6 +156,7 @@ class KioskViewModel(
 
     fun logoutEstoque() {
         autoRefreshJob?.cancel()
+        fetchMovementsJob?.cancel()
         cpfLookupJob?.cancel()
         activeAdminToken = null
         sessionPreferences.clearEstoqueSession()
@@ -166,7 +173,8 @@ class KioskViewModel(
 
     fun refreshPendingMovements(silent: Boolean = false) {
         if (!_uiState.value.isEstoqueLoggedIn) return
-        viewModelScope.launch {
+        fetchMovementsJob?.cancel()
+        fetchMovementsJob = viewModelScope.launch {
             if (!silent) {
                 _uiState.update { it.copy(isLoadingMovements = true, listError = null) }
             }

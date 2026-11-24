@@ -359,21 +359,30 @@ export function verifyTotvsRmGusuarioPassword(plainPassword: string, gusuarioSen
 
   const targetHash = bcryptHash.slice(0, 60);
 
-  // Candidatos de pré-hash utilizados pelo TOTVS RM (BCrypt.Net-Next V=4.0.2.0 com HT=SHA256 e modo padrão)
+  // Candidatos de pré-hash utilizados pelo TOTVS RM (prioriza conforme metadado #HT=SHA256#)
   const sha256Utf8 = crypto.createHash('sha256').update(plainPassword, 'utf8').digest();
   const sha256Utf16Le = crypto.createHash('sha256').update(Buffer.from(plainPassword, 'utf16le')).digest();
 
-  const candidates = [
-    // 1. BCrypt.Net-Next EnhancedHashPassword(password, HashType.SHA256) -> Base64(SHA256(UTF8(password)))
-    sha256Utf8.toString('base64'),
-    // 2. BCrypt direto da senha em texto puro
-    plainPassword,
-    // 3. Hex minúsculo / maiúsculo de SHA256(UTF8(password))
-    sha256Utf8.toString('hex').toLowerCase(),
-    sha256Utf8.toString('hex').toUpperCase(),
-    // 4. Base64(SHA256(UTF16LE(password)))
-    sha256Utf16Le.toString('base64')
-  ];
+  const isEnhancedSha256 = trimmed.includes('#HT=SHA256#');
+  const candidates = isEnhancedSha256
+    ? [
+        // 1. BCrypt.Net-Next EnhancedHashPassword(password, HashType.SHA256) -> Base64(SHA256(UTF8(password)))
+        sha256Utf8.toString('base64'),
+        // 2. Hex minúsculo / maiúsculo de SHA256(UTF8(password))
+        sha256Utf8.toString('hex').toLowerCase(),
+        sha256Utf8.toString('hex').toUpperCase(),
+        // 3. Base64(SHA256(UTF16LE(password)))
+        sha256Utf16Le.toString('base64'),
+        // 4. BCrypt direto da senha em texto puro
+        plainPassword
+      ]
+    : [
+        plainPassword,
+        sha256Utf8.toString('base64'),
+        sha256Utf8.toString('hex').toLowerCase(),
+        sha256Utf8.toString('hex').toUpperCase(),
+        sha256Utf16Le.toString('base64')
+      ];
 
   for (const candidate of candidates) {
     const computed = bcryptHashWithSalt(candidate, targetHash);

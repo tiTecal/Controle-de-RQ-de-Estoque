@@ -130,13 +130,12 @@ export function verifyClientHmacSignature(params: {
     return { ok: false, reason: 'Nonce de requisição inválido.' };
   }
 
-  // Limpa nonces expirados e previne Replay Attack
+  // Limpa nonces expirados e previne Replay Attack com evicção FIFO
   if (params.usedNonces.size > 5_000) {
     for (const [k, exp] of params.usedNonces.entries()) {
-      if (exp <= now) params.usedNonces.delete(k);
-    }
-    if (params.usedNonces.size > 5_000) {
-      params.usedNonces.clear();
+      if (exp <= now || params.usedNonces.size > 4_500) {
+        params.usedNonces.delete(k);
+      }
     }
   }
 
@@ -173,6 +172,12 @@ export class InMemoryRateLimiter {
     if (this.buckets.size > 5_000) {
       for (const [k, bucket] of this.buckets.entries()) {
         if (bucket.resetAt <= now) this.buckets.delete(k);
+      }
+      if (this.buckets.size > 5_000) {
+        for (const k of this.buckets.keys()) {
+          this.buckets.delete(k);
+          if (this.buckets.size <= 4_500) break;
+        }
       }
     }
 

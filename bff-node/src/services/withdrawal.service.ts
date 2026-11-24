@@ -117,8 +117,9 @@ export class WithdrawalService {
     }
 
     const idempotencyKey = (request.idempotencyKey || '').trim();
-    if (idempotencyKey && this.idempotencyCache.has(idempotencyKey)) {
-      return this.idempotencyCache.get(idempotencyKey)!;
+    const scopedIdemKey = idempotencyKey ? `${idMov}:${idempotencyKey}` : '';
+    if (scopedIdemKey && this.idempotencyCache.has(scopedIdemKey)) {
+      return this.idempotencyCache.get(scopedIdemKey)!;
     }
 
     // Valida login e senha do funcionário retirante no TOTVS RM ANTES de adquirir o lock de gravação
@@ -140,46 +141,55 @@ export class WithdrawalService {
       this.movementLocks.set(idMov, mutex);
     }
 
-    return await mutex.runExclusive(async () => {
-      if (idempotencyKey && this.idempotencyCache.has(idempotencyKey)) {
-        return this.idempotencyCache.get(idempotencyKey)!;
-      }
-
-      const now = DateTime.now().setZone(this.config.timezone);
-      const dataRetirada = now.toFormat(this.config.dataRetiradaPattern);
-      const horaRetirada = now.toFormat('HH:mm:ss');
-
-      const safeRetiradoPor = this.rmGateway.resolveSafeWithdrawerLabel
-        ? await this.rmGateway.resolveSafeWithdrawerLabel(cleanLogin)
-        : cleanLogin;
-
-      const numeroMov = await this.rmGateway.saveWithdrawalComplementaryFields(
-        this.config.rmCodColigada,
-        idMov,
-        cleanLogin,
-        dataRetirada,
-        horaRetirada
-      );
-
-      const response: ConfirmWithdrawalResponse = {
-        codColigada: this.config.rmCodColigada,
-        idMov,
-        numeroMov,
-        retiradoPor: safeRetiradoPor || cleanLogin,
-        dataRetirada,
-        horaRetirada,
-        mensagem: `Baixa de retirada do movimento 1.1.10 Nº ${numeroMov} registrada com sucesso.`
-      };
-
-      if (idempotencyKey) {
-        if (this.idempotencyCache.size > 2_000) {
-          this.idempotencyCache.clear();
+    try {
+      return await mutex.runExclusive(async () => {
+        if (scopedIdemKey && this.idempotencyCache.has(scopedIdemKey)) {
+          return this.idempotencyCache.get(scopedIdemKey)!;
         }
-        this.idempotencyCache.set(idempotencyKey, response);
-      }
 
-      return response;
-    });
+        const now = DateTime.now().setZone(this.config.timezone);
+        const dataRetirada = now.toFormat(this.config.dataRetiradaPattern);
+        const horaRetirada = now.toFormat('HH:mm:ss');
+
+        const safeRetiradoPor = this.rmGateway.resolveSafeWithdrawerLabel
+          ? await this.rmGateway.resolveSafeWithdrawerLabel(cleanLogin)
+          : cleanLogin;
+
+        const numeroMov = await this.rmGateway.saveWithdrawalComplementaryFields(
+          this.config.rmCodColigada,
+          idMov,
+          cleanLogin,
+          dataRetirada,
+          horaRetirada
+        );
+
+        const response: ConfirmWithdrawalResponse = {
+          codColigada: this.config.rmCodColigada,
+          idMov,
+          numeroMov,
+          retiradoPor: safeRetiradoPor || cleanLogin,
+          dataRetirada,
+          horaRetirada,
+          mensagem: `Baixa de retirada do movimento 1.1.10 Nº ${numeroMov} registrada com sucesso.`
+        };
+
+        if (scopedIdemKey) {
+          if (this.idempotencyCache.size > 2_000) {
+            for (const key of this.idempotencyCache.keys()) {
+              this.idempotencyCache.delete(key);
+              if (this.idempotencyCache.size <= 1_800) break;
+            }
+          }
+          this.idempotencyCache.set(scopedIdemKey, response);
+        }
+
+        return response;
+      });
+    } finally {
+      if (!mutex.isLocked()) {
+        this.movementLocks.delete(idMov);
+      }
+    }
   }
 
   async listarUsuarios(): Promise<AlmoxarifadoUserDto[]> {

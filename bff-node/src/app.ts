@@ -9,6 +9,7 @@ import {
   MovementNotFoundError,
   TotvsRmIntegrationError
 } from './domain/errors.js';
+import { MockTotvsRmClient } from './rm/mock-totvs-rm-client.js';
 import { SqlServerRmClient } from './rm/sqlserver-rm-client.js';
 import { TotvsRmGateway } from './rm/totvs-rm-gateway.interface.js';
 import { registerWithdrawalRoutes } from './routes/withdrawal.routes.js';
@@ -82,9 +83,12 @@ export async function buildApp({
     }
   });
 
-  // Gateway TOTVS RM: Conexão Direta ao SQL Server Corpore + ALMOXARIFADO
+  // Gateway TOTVS RM: Modo Simulador (RM_MOCK_MODE=true) ou Conexão Direta ao SQL Server
   const rmGateway: TotvsRmGateway =
-    customGateway ?? new SqlServerRmClient(config);
+    customGateway ??
+    (config.rmMockMode
+      ? new MockTotvsRmClient(config.rmCodColigada)
+      : new SqlServerRmClient(config));
 
   app.addHook('onClose', async () => {
     if (rmGateway.close) {

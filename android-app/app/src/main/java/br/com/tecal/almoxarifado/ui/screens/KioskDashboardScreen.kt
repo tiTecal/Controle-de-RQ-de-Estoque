@@ -1368,7 +1368,7 @@ private fun MovementDetailFullScreen(
                         } else {
                             Button(
                                 onClick = onConfirmWithdrawal,
-                                enabled = !isLoadingItems,
+                                enabled = !isLoadingItems && itemsError == null && items.isNotEmpty(),
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = TecalSuccessGreen,
                                     contentColor = Color.White
@@ -1525,7 +1525,7 @@ private fun MovementDetailFullScreen(
                             } else {
                                 Button(
                                     onClick = onConfirmWithdrawal,
-                                    enabled = !isLoadingItems,
+                                    enabled = !isLoadingItems && itemsError == null && items.isNotEmpty(),
                                     colors = ButtonDefaults.buttonColors(
                                         containerColor = TecalSuccessGreen,
                                         contentColor = Color.White

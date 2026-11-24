@@ -24,10 +24,10 @@ android {
 
     signingConfigs {
         create("release") {
-            storeFile = file("release-key.jks")
-            storePassword = "tecal123"
-            keyAlias = "my-alias"
-            keyPassword = "tecal123"
+            storeFile = file(System.getenv("TECAL_KEYSTORE_PATH") ?: "release-key.jks")
+            storePassword = System.getenv("TECAL_KEYSTORE_PASS") ?: "tecal123"
+            keyAlias = System.getenv("TECAL_KEY_ALIAS") ?: "my-alias"
+            keyPassword = System.getenv("TECAL_KEY_PASS") ?: "tecal123"
         }
     }
 
