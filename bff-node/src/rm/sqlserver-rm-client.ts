@@ -16,9 +16,6 @@ import {
 import { verifyTotvsRmGusuarioPassword } from './bcrypt-verifier.js';
 import { PasswordHasher } from './password-hasher.js';
 import {
-  buildEmployeeCandidateLoginsMap,
-  EmployeeAliasSource,
-  GusuarioAliasSource,
   resolveRmHttpBaseUrl,
   RmHostAuthClient
 } from './rm-auth-helpers.js';
@@ -278,54 +275,16 @@ export class SqlServerRmClient implements TotvsRmGateway {
         }
       }
 
-      // 2. Validação direta na Corpore.dbo.GUSUARIO por todos os logins aliases do colaborador
-      const candidateSet = new Set<string>();
-      const pushCandidate = (val: string | undefined): void => {
-        const clean = (val || '').trim().toLowerCase();
-        if (clean) candidateSet.add(clean);
-      };
-
-      if (internalEntry) {
-        for (const cand of internalEntry.candidateLogins) {
-          pushCandidate(cand);
-        }
-      } else if (cleanCpfDigits.length === 11) {
-        if (this.internalUsersByCpf.size === 0) {
-          await this.ensureUsersLoaded();
-        }
-        const byCpf = this.internalUsersByCpf.get(cleanCpfDigits);
-        if (byCpf) {
-          for (const cand of byCpf.candidateLogins) {
-            pushCandidate(cand);
-          }
-        }
-      }
-
-      pushCandidate(effectiveLogin);
-      if (!internalEntry) {
-        pushCandidate(cleanInput);
-      }
-      if (cleanCpfDigits) {
-        pushCandidate(cleanCpfDigits);
-      }
-      if (internalEntry?.chapa) {
-        pushCandidate(`2-${internalEntry.chapa}`);
-        pushCandidate(internalEntry.chapa);
-      }
-
-      const candidateLogins = Array.from(candidateSet).slice(0, 12);
+      // 2. Validação direta na Corpore.dbo.GUSUARIO EXCLUSIVAMENTE pelo CPF (11 dígitos)
+      // Nunca busca nem autentica por CODUSUARIO nomeado (ex.: raphael.araujo) ou 2-CHAPA.
+      const candidateLogins: string[] = cleanCpfDigits.length === 11 ? [cleanCpfDigits] : [];
       const activeAccountPriority: Array<{ codUsuario: string; isLegacyNonBcrypt: boolean }> = [];
       let gusuarioQuerySucceeded = false;
 
       if (candidateLogins.length > 0) {
         try {
           const req = pool.request();
-          const placeholders: string[] = [];
-          candidateLogins.forEach((cand, idx) => {
-            const param = `c${idx}`;
-            req.input(param, sql.VarChar(60), cand);
-            placeholders.push(`@${param}`);
-          });
+          req.input('cpf', sql.VarChar(60), cleanCpfDigits);
 
           const rmResult = await req.query(`
             SELECT
@@ -333,7 +292,7 @@ export class SqlServerRmClient implements TotvsRmGateway {
               U.SENHA
             FROM [${this.corporeDb}].[dbo].[GUSUARIO] U WITH (NOLOCK)
             WHERE ISNULL(U.STATUS, 1) = 1
-              AND LOWER(LTRIM(RTRIM(U.CODUSUARIO))) IN (${placeholders.join(', ')})
+              AND LTRIM(RTRIM(U.CODUSUARIO)) = @cpf
             ORDER BY COALESCE(U.DATAULTIMOACESSOVALIDO, U.DATAULTIMOACESSO, U.RECCREATEDON) DESC;
           `);
           gusuarioQuerySucceeded = true;
@@ -357,15 +316,14 @@ export class SqlServerRmClient implements TotvsRmGateway {
         }
       }
 
-      // 3. Fallback oficial no servidor TOTVS RM Host (/api/connect/token + SOAP IwsBase)
-      // Valida contas com hash legado de 8 caracteres ou não-BCrypt sem duplicar falhas em excesso
+      // 3. Fallback oficial no servidor TOTVS RM Host (/api/connect/token + SOAP IwsBase) apenas por CPF (11 dígitos)
       let remoteTargets: string[];
       if (activeAccountPriority.length > 0) {
         const legacyFirst = activeAccountPriority.filter((acc) => acc.isLegacyNonBcrypt);
         const bcryptRest = activeAccountPriority.filter((acc) => !acc.isLegacyNonBcrypt);
-        remoteTargets = [...legacyFirst, ...bcryptRest].map((acc) => acc.codUsuario).slice(0, 3);
-      } else if (!gusuarioQuerySucceeded && effectiveLogin) {
-        remoteTargets = [effectiveLogin];
+        remoteTargets = [...legacyFirst, ...bcryptRest].map((acc) => acc.codUsuario).slice(0, 1);
+      } else if (!gusuarioQuerySucceeded && cleanCpfDigits.length === 11) {
+        remoteTargets = [cleanCpfDigits];
       } else {
         remoteTargets = [];
       }
@@ -766,86 +724,57 @@ export class SqlServerRmClient implements TotvsRmGateway {
       let seqId = 1;
 
       try {
-        // Query super leve: lê apenas PFUNC + PPESSOA + PSECAO sem OUTER APPLY pesado em GUSUARIO
-        const rmLightQuery = `
+        // Busca colaboradores ativos na Coligada exclusivamente por CPF (11 dígitos) com conta ativa em GUSUARIO.CODUSUARIO = CPF.
+        // Nunca busca nem expõe CODUSUARIO nomeado (ex.: raphael.araujo) ou 2-CHAPA.
+        const targetColigada = this.config.rmCodColigada || 2;
+        const rmCpfOnlyQuery = `
           SELECT
             LTRIM(RTRIM(F.CHAPA)) AS CHAPA,
             LTRIM(RTRIM(F.NOME)) AS NOME_FUNC,
             LTRIM(RTRIM(ISNULL(P.CPF, ''))) AS CPF,
-            LTRIM(RTRIM(ISNULL(S.DESCRICAO, ''))) AS NOME_SECAO,
-            LTRIM(RTRIM(ISNULL(P.CODUSUARIO, ''))) AS LOGIN_PPESSOA,
-            LTRIM(RTRIM(ISNULL(P.EMAIL, ''))) AS EMAIL_PESSOA
+            LTRIM(RTRIM(ISNULL(S.DESCRICAO, ''))) AS NOME_SECAO
           FROM [${this.corporeDb}].[dbo].[PFUNC] F WITH (NOLOCK)
-          LEFT JOIN [${this.corporeDb}].[dbo].[PPESSOA] P WITH (NOLOCK)
+          INNER JOIN [${this.corporeDb}].[dbo].[PPESSOA] P WITH (NOLOCK)
             ON P.CODIGO = F.CODPESSOA
+          INNER JOIN [${this.corporeDb}].[dbo].[GUSUARIO] G WITH (NOLOCK)
+            ON ISNULL(G.STATUS, 1) = 1
+           AND LTRIM(RTRIM(G.CODUSUARIO)) = LTRIM(RTRIM(P.CPF))
           LEFT JOIN [${this.corporeDb}].[dbo].[PSECAO] S WITH (NOLOCK)
             ON S.CODCOLIGADA = F.CODCOLIGADA
            AND S.CODIGO = F.CODSECAO
-          WHERE F.CODCOLIGADA = 2
+          WHERE F.CODCOLIGADA = @codColigada
             AND ISNULL(F.CODSITUACAO, '') <> 'D'
-          ORDER BY F.NOME ASC;
+            AND LEN(LTRIM(RTRIM(ISNULL(P.CPF, '')))) = 11
+            AND LTRIM(RTRIM(P.CPF)) NOT LIKE '%[^0-9]%'
+          ORDER BY F.NOME ASC, CASE WHEN F.CODSITUACAO = 'A' THEN 0 ELSE 1 END ASC, F.CHAPA DESC;
         `;
 
-        // Busca todos os usuários ativos do GUSUARIO em 1 leitura leve para associar logins ERP, CPF e contas 2-CHAPA
-        const rmAllActiveUsersQuery = `
-          SELECT
-            LTRIM(RTRIM(CODUSUARIO)) AS CODUSUARIO,
-            LTRIM(RTRIM(ISNULL(NOME, ''))) AS NOME,
-            LTRIM(RTRIM(ISNULL(EMAIL, ''))) AS EMAIL
-          FROM [${this.corporeDb}].[dbo].[GUSUARIO] WITH (NOLOCK)
-          WHERE ISNULL(STATUS, 1) = 1;
-        `;
-
-        const [rmRes, namedRes] = await Promise.all([
-          pool.request().query(rmLightQuery),
-          pool.request().query(rmAllActiveUsersQuery)
-        ]);
+        const rmRes = await pool
+          .request()
+          .input('codColigada', sql.SmallInt, targetColigada)
+          .query(rmCpfOnlyQuery);
 
         const rmRows = rmRes.recordset || [];
-        const employees: EmployeeAliasSource[] = rmRows.map((row, idx) => ({
-          key: String(idx),
-          chapa: String(row.CHAPA || '').trim(),
-          nomeCompleto: String(row.NOME_FUNC || '').trim(),
-          fullCpf: onlyDigits(String(row.CPF || '')),
-          loginPpessoa: String(row.LOGIN_PPESSOA || '').trim(),
-          emailPessoa: String(row.EMAIL_PESSOA || '').trim()
-        }));
-
-        const gusuarios: GusuarioAliasSource[] = (namedRes.recordset || [])
-          .map((uRow) => ({
-            codUsuario: String(uRow.CODUSUARIO || '').trim(),
-            nome: String(uRow.NOME || '').trim(),
-            email: String(uRow.EMAIL || '').trim()
-          }))
-          .filter((g) => Boolean(g.codUsuario));
-
-        const { loginsByEmployeeKey, primaryNamedByEmployeeKey } =
-          buildEmployeeCandidateLoginsMap(employees, gusuarios);
-
-        for (let idx = 0; idx < rmRows.length; idx++) {
-          const row = rmRows[idx];
-          const emp = employees[idx];
-          const { chapa, nomeCompleto, fullCpf, loginPpessoa } = emp;
+        for (const row of rmRows) {
+          const chapa = String(row.CHAPA || '').trim();
+          const nomeCompleto = String(row.NOME_FUNC || '').trim();
+          const fullCpf = onlyDigits(String(row.CPF || ''));
           const secao = String(row.NOME_SECAO || '').trim();
-          const loginNamed = primaryNamedByEmployeeKey.get(emp.key) || '';
-          const effectiveLogin = loginNamed || loginPpessoa || fullCpf || chapa;
 
-          if (!effectiveLogin || !nomeCompleto) continue;
+          if (fullCpf.length !== 11 || !nomeCompleto) continue;
+          // Deduplica colaboradores com mais de uma matrícula na PFUNC mantendo o vínculo principal
+          if (nextInternalByCpf.has(fullCpf)) continue;
 
-          const candidateLogins = loginsByEmployeeKey.get(emp.key) || [effectiveLogin];
           const isEstoque =
             secao.toUpperCase().includes('ESTOQ') || secao.toUpperCase().includes('ALMOX');
 
           const opaqueRef = createOpaqueRmRef(
             this.config.jwtSecret,
-            `${chapa}|${fullCpf}|${nomeCompleto}|${effectiveLogin}`
+            `cpf|${fullCpf}`
           );
           const maskedCpf = maskCpfLgpd(fullCpf);
-          const isNumericOnly = /^\d+$/.test(effectiveLogin.trim());
-          const safeLabel =
-            !isCpfNumericLogin(effectiveLogin) && !isNumericOnly
-              ? effectiveLogin.trim()
-              : buildSafeNameSlug(nomeCompleto);
+          // Grava primeiro e último nome (slug seguro) na TMOVCOMPL.RETIRADO_POR sem expor CPF nem CODUSUARIO nomeado
+          const safeLabel = buildSafeNameSlug(nomeCompleto);
 
           const publicDto: AlmoxarifadoUserDto = {
             id: seqId++,
@@ -863,8 +792,8 @@ export class SqlServerRmClient implements TotvsRmGateway {
 
           const record: InternalUserRecord = {
             ref: opaqueRef,
-            realRmLogin: effectiveLogin,
-            candidateLogins,
+            realRmLogin: fullCpf,
+            candidateLogins: [fullCpf],
             fullCpf,
             chapa,
             safeLabel,
@@ -873,25 +802,8 @@ export class SqlServerRmClient implements TotvsRmGateway {
 
           usersMap.set(opaqueRef, publicDto);
           nextInternalByRef.set(opaqueRef.toLowerCase(), record);
-
-          // Retrocompatibilidade para telas já abertas no app que ainda enviem o ref opaco antigo (sem loginNamed)
-          const legacyFallbackLogin = loginPpessoa || fullCpf || chapa;
-          if (legacyFallbackLogin && legacyFallbackLogin !== effectiveLogin) {
-            const legacyOpaqueRef = createOpaqueRmRef(
-              this.config.jwtSecret,
-              `${chapa}|${fullCpf}|${nomeCompleto}|${legacyFallbackLogin}`
-            );
-            if (!nextInternalByRef.has(legacyOpaqueRef.toLowerCase())) {
-              nextInternalByRef.set(legacyOpaqueRef.toLowerCase(), record);
-            }
-          }
-
-          for (const cand of candidateLogins) {
-            seenRealLogins.add(cand.toLowerCase());
-          }
-          if (fullCpf.length === 11) {
-            nextInternalByCpf.set(fullCpf, record);
-          }
+          nextInternalByCpf.set(fullCpf, record);
+          seenRealLogins.add(fullCpf);
         }
       } catch {
         // Fallback caso PFUNC não esteja acessível
@@ -915,10 +827,17 @@ export class SqlServerRmClient implements TotvsRmGateway {
           const rawLogin = String(row.LOGIN || '').trim();
           if (!rawLogin) continue;
           const key = rawLogin.toLowerCase();
-          if (!seenRealLogins.has(key) && !usersMap.has(key)) {
-            const fullCpf = isCpfNumericLogin(rawLogin) ? onlyDigits(rawLogin) : '';
+          const fullCpf = isCpfNumericLogin(rawLogin) ? onlyDigits(rawLogin) : '';
+
+          // Mantém apenas a conta técnica de sessão do tablet ('almoxarife') ou logins por CPF (11 dígitos);
+          // ignora logins nomeados (ex.: Gilmar.Araujo, phelipe.carvalho) para não alimentar o app com CODUSUARIO nomeado.
+          if (key !== 'almoxarife' && fullCpf.length !== 11) {
+            continue;
+          }
+
+          if (!seenRealLogins.has(fullCpf || key) && !usersMap.has(key)) {
             const exposedLogin = fullCpf
-              ? createOpaqueRmRef(this.config.jwtSecret, `local|${rawLogin}`)
+              ? createOpaqueRmRef(this.config.jwtSecret, `local|${fullCpf}`)
               : rawLogin;
             const nomeCompleto = String(row.NOME_COMPLETO || '').trim();
 
@@ -938,15 +857,19 @@ export class SqlServerRmClient implements TotvsRmGateway {
 
             usersMap.set(exposedLogin.toLowerCase(), publicDto);
             if (exposedLogin !== rawLogin) {
-              nextInternalByRef.set(exposedLogin.toLowerCase(), {
+              const localRec: InternalUserRecord = {
                 ref: exposedLogin,
-                realRmLogin: rawLogin,
-                candidateLogins: [rawLogin],
+                realRmLogin: fullCpf || rawLogin,
+                candidateLogins: [fullCpf || rawLogin],
                 fullCpf,
                 chapa: '',
                 safeLabel: buildSafeNameSlug(nomeCompleto),
                 publicDto
-              });
+              };
+              nextInternalByRef.set(exposedLogin.toLowerCase(), localRec);
+              if (fullCpf.length === 11) {
+                nextInternalByCpf.set(fullCpf, localRec);
+              }
             }
           }
         }
