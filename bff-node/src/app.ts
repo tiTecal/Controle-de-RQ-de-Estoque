@@ -26,6 +26,7 @@ export async function buildApp({
 }: BuildAppOptions): Promise<FastifyInstance> {
   const isTest = process.env.NODE_ENV === 'test' || process.env.VITEST === 'true';
   const app = fastify({
+    trustProxy: true, // Permite identificar o IP real via X-Forwarded-For quando atrás do IIS ARR
     bodyLimit: 64 * 1024, // 64 KB máximo por payload para conter abuso de memória
     logger: isTest
       ? false
