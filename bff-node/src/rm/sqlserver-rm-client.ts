@@ -25,6 +25,7 @@ import {
   createOpaqueRmRef,
   isCpfNumericLogin,
   maskCpfLgpd,
+  maskNameLgpd,
   onlyDigits
 } from '../security/security.js';
 
@@ -779,7 +780,7 @@ export class SqlServerRmClient implements TotvsRmGateway {
           const publicDto: AlmoxarifadoUserDto = {
             id: seqId++,
             login: opaqueRef,
-            nomeCompleto,
+            nomeCompleto: maskNameLgpd(nomeCompleto),
             cpf: maskedCpf,
             chapa,
             secao,
@@ -844,7 +845,7 @@ export class SqlServerRmClient implements TotvsRmGateway {
             const publicDto: AlmoxarifadoUserDto = {
               id: Number(row.ID) || seqId++,
               login: exposedLogin,
-              nomeCompleto,
+              nomeCompleto: key === 'almoxarife' ? nomeCompleto : maskNameLgpd(nomeCompleto),
               cpf: maskCpfLgpd(fullCpf),
               chapa: '',
               secao: '',

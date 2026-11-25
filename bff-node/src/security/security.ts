@@ -45,6 +45,25 @@ export function maskCpfLgpd(rawCpf: string): string {
   return '***.***.***-**';
 }
 
+/**
+ * LGPD: Mascara o nome completo na listagem pública enviada ao terminal compartilhado,
+ * mantendo o primeiro nome e abreviando/mascarando os sobrenomes (ex.: "RAPHAEL A*** B***").
+ */
+export function maskNameLgpd(fullName: string): string {
+  const parts = (fullName || '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  if (parts.length === 0) return '***';
+  if (parts.length === 1) {
+    const p = parts[0];
+    return p.length <= 3 ? `${p[0]}***` : `${p.slice(0, 3)}***`;
+  }
+  const [first, ...rest] = parts;
+  const maskedRest = rest.map((word) => `${word[0]}***`);
+  return [first, ...maskedRest].join(' ');
+}
+
 export function isCpfNumericLogin(val: string): boolean {
   const trimmed = (val || '').trim();
   const digits = onlyDigits(trimmed);
