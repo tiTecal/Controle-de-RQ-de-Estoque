@@ -478,7 +478,7 @@ private fun MovementsListCard(
     onSelectMovement: (PendingMovementDto) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var filterTab by remember { mutableIntStateOf(0) }
+    var filterTab by remember { mutableIntStateOf(1) } // Padrão: aba "Pendentes"
 
     val only1110 = remember(movements) { movements.filter { it.codTmv.trim() == "1.1.10" } }
     val pendingCount = remember(only1110) { only1110.count { !it.jaRetirado } }
