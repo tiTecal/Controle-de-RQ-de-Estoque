@@ -389,14 +389,26 @@ export class SqlServerRmClient implements TotvsRmGateway {
       OUTER APPLY (
           SELECT TOP 1
               ISNULL(MORIG.NUMEROMOV, CAST(MORIG.IDMOV AS VARCHAR(20))) AS NUMEROMOV_ORIGEM,
-              ISNULL(MORIG.CODUSUARIO, '') AS SOLICITANTE_ORIGEM
+              COALESCE(
+                  NULLIF(LTRIM(RTRIM(MAVO.RECCREATEDBY)), ''),
+                  NULLIF(LTRIM(RTRIM(MAVO.CODUSUARIO)), ''),
+                  NULLIF(LTRIM(RTRIM(MORIG.RECCREATEDBY)), ''),
+                  NULLIF(LTRIM(RTRIM(MORIG.CODUSUARIO)), ''),
+                  ''
+              ) AS SOLICITANTE_ORIGEM
           FROM [${this.corporeDb}].[dbo].[TMOVRELAC] REL WITH (NOLOCK)
           INNER JOIN [${this.corporeDb}].[dbo].[TMOV] MORIG WITH (NOLOCK)
               ON MORIG.CODCOLIGADA = REL.CODCOLORIGEM
              AND MORIG.IDMOV = REL.IDMOVORIGEM
+          LEFT JOIN [${this.corporeDb}].[dbo].[TMOVRELAC] REL2 WITH (NOLOCK)
+              ON REL2.CODCOLDESTINO = MORIG.CODCOLIGADA
+             AND REL2.IDMOVDESTINO = MORIG.IDMOV
+          LEFT JOIN [${this.corporeDb}].[dbo].[TMOV] MAVO WITH (NOLOCK)
+              ON MAVO.CODCOLIGADA = REL2.CODCOLORIGEM
+             AND MAVO.IDMOV = REL2.IDMOVORIGEM
           WHERE REL.CODCOLDESTINO = M.CODCOLIGADA
             AND REL.IDMOVDESTINO = M.IDMOV
-          ORDER BY MORIG.IDMOV DESC
+          ORDER BY MORIG.IDMOV DESC, MAVO.IDMOV ASC
       ) ORIG
       OUTER APPLY (
           SELECT COUNT(1) AS QTD_ITENS
